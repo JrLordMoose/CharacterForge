@@ -3,6 +3,7 @@ import { useParams, useLocation } from 'wouter';
 import { Sidebar } from '@/components/sidebar';
 import { CommandInterface } from '@/components/command-interface';
 import { CharacterWorkspace } from '@/components/character-workspace';
+import { CharacterChatDialog } from '@/components/character-chat-dialog';
 import { useCharacter } from '@/context/character-context';
 import { Character } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';

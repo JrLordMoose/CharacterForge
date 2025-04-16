@@ -5,6 +5,7 @@ import { z } from "zod";
 import { insertCharacterSchema, updateCharacterSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import OpenAI from "openai";
+import { WebSocketServer, WebSocket } from "ws";
 
 // Configure OpenAI
 const openai = new OpenAI({ 
@@ -288,5 +289,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // Set up WebSocket server
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Keep track of connected clients by characterId
+  const connectedClients = new Map<string, WebSocket[]>();
+  
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+    let clientCharacterId = '';
+    
+    ws.on('message', async (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        
+        if (data.type === 'join') {
+          // Client is joining a character session
+          clientCharacterId = data.characterId.toString();
+          
+          // Add to connected clients for this character
+          if (!connectedClients.has(clientCharacterId)) {
+            connectedClients.set(clientCharacterId, []);
+          }
+          const clients = connectedClients.get(clientCharacterId);
+          if (clients) {
+            clients.push(ws);
+          }
+          
+          console.log(`Client joined character session: ${clientCharacterId}`);
+          
+        } else if (data.type === 'chat' && data.characterId && data.message) {
+          // Process AI chat message
+          const characterId = parseInt(data.characterId);
+          const character = await storage.getCharacter(characterId);
+          
+          if (!character) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Character not found'
+            }));
+            return;
+          }
+          
+          // Process the message with AI in production
+          // or return canned response in development
+          let aiResponse = '';
+          
+          try {
+            if (process.env.NODE_ENV === 'production' && process.env.OPENAI_API_KEY) {
+              // In production, call OpenAI
+              const chatCompletion = await openai.chat.completions.create({
+                model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+                messages: [
+                  { 
+                    role: "system", 
+                    content: `You are ${character.name}, a character with the following traits and background:
+                      Role: ${character.role || 'Unknown'}
+                      Description: ${character.description || 'No description available'}
+                      Backstory: ${character.backstory || 'No backstory available'}
+                      Motivations: ${character.motivations || 'Unknown motivations'}
+                      Voice style: ${character.voice || 'Standard speaking pattern'}
+                      
+                      Respond in character, using the defined voice style and personality traits.
+                      Keep responses concise (1-3 paragraphs) but meaningful.`
+                  },
+                  { role: "user", content: data.message }
+                ],
+                max_tokens: 500,
+              });
+              
+              aiResponse = chatCompletion.choices[0].message.content ?? '';
+            } else {
+              // In development or without API key, return canned response
+              const responses = [
+                `${character.name} considers your statement thoughtfully before responding, "That's an interesting perspective. From my experience, I've found that things are rarely so simple. Perhaps we should explore this further."`,
+                `"I appreciate your thoughts on this matter," ${character.name} says with a slight nod. "Given my background, I see it somewhat differently. Let me explain my perspective..."`,
+                `${character.name} listens carefully, then replies, "I understand what you're saying. However, considering what I've been through, I've learned to approach such situations with caution. There's often more beneath the surface."`,
+                `"Hmm," ${character.name} contemplates your words. "That aligns with some of my own thoughts, though I'd add a qualification. Based on my experiences, there's usually a hidden factor at play in these scenarios."`,
+              ];
+              
+              // Randomly select a response
+              const index = Math.floor(Math.random() * responses.length);
+              aiResponse = responses[index];
+            }
+            
+            // Send response back to the client
+            ws.send(JSON.stringify({
+              type: 'chat-response',
+              characterId: data.characterId,
+              originalMessage: data.message,
+              response: aiResponse,
+              timestamp: new Date().toISOString()
+            }));
+            
+          } catch (error) {
+            console.error('Error processing chat message:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Error processing chat message'
+            }));
+          }
+          
+        } else if (data.type === 'update' && data.characterId && data.characterData) {
+          // Update character from conversation
+          const characterId = parseInt(data.characterId);
+          
+          try {
+            // Verify character exists
+            const character = await storage.getCharacter(characterId);
+            
+            if (!character) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Character not found'
+              }));
+              return;
+            }
+            
+            // Update the character
+            const updatedCharacter = await storage.updateCharacter(characterId, data.characterData);
+            
+            // Broadcast update to all clients viewing this character
+            const clients = connectedClients.get(data.characterId.toString()) || [];
+            clients.forEach(client => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                  type: 'character-updated',
+                  character: updatedCharacter
+                }));
+              }
+            });
+            
+            ws.send(JSON.stringify({
+              type: 'update-success',
+              message: 'Character updated successfully'
+            }));
+            
+          } catch (error) {
+            console.error('Error updating character:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Error updating character'
+            }));
+          }
+        }
+        
+      } catch (error) {
+        console.error('WebSocket message processing error:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Invalid message format'
+        }));
+      }
+    });
+    
+    ws.on('close', () => {
+      // Remove client from connected clients
+      if (clientCharacterId) {
+        const clients = connectedClients.get(clientCharacterId) || [];
+        const index = clients.indexOf(ws);
+        if (index !== -1) {
+          clients.splice(index, 1);
+        }
+        
+        // Clean up empty arrays
+        if (clients.length === 0) {
+          connectedClients.delete(clientCharacterId);
+        }
+      }
+      
+      console.log('WebSocket client disconnected');
+    });
+  });
+  
   return httpServer;
 }

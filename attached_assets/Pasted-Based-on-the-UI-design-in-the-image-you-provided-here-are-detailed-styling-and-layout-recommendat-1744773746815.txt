@@ -1,0 +1,99 @@
+Based on the UI design in the image you provided, here are detailed **styling and layout recommendations** to recreate and enhance this elegant, cinematic character creation interface:
+
+---
+
+## 🎨 **Visual Styling Recommendations**
+
+### 🎨 Color Palette
+- **Background:** Deep charcoal black `#1A1A1A` or warm noir brown `#1C1B20`
+- **Primary Text:** Muted gold or parchment `#E6C88C` for titles
+- **Secondary Text:** Soft ivory or warm gray `#C9C9C9`
+- **Highlight / Accent Color:** Goldenrod `#F4A261` or Burnt Orange `#F95738`
+- **Progress Bar Fill:** Light gold `#D7A85F`, background bar in dark slate `#2C2C2C`
+
+### 🌟 Typography
+- **Title Font:** Bold serif or condensed gothic (e.g., *"Cinzel"*, *"Oswald Bold"*)
+- **Body Text:** Clean sans-serif for readability (e.g., *"Inter"*, *"DM Sans"*)
+- **Button Text:** Uppercase, medium-weight, with hover glow
+
+---
+
+## 📐 **Layout Recommendations**
+
+### 🗂️ Left Sidebar (Character Navigation)
+- **Component:** `TreeView` (Folders & Subfolders)
+- **Structure:**
+  ```
+  - My Novel
+     - Protagonists
+     - Antagonists
+     - Supporting Characters
+     - Unused
+  ```
+- **Icons:** Folder icons with expand/collapse toggles
+- **Controls:** Add, delete, rename character/folder (icons at bottom)
+- **Interaction:** Highlight selected character, auto-load into main panel
+
+---
+
+### 🧠 Center Panel (Character Editor)
+- **Section Header:** “Character Creation” — bold, top-left aligned
+- **Image Generation Button:**  
+  `+ generate character image` – rounded, outlined button
+  - On click: Modal or sidebar opens with prompt input & style selector
+- **Fields:**
+  - `Name:` Text input (e.g., Julian Carter)
+  - `Role:` Dropdown or segmented selector (e.g., Protagonist, Antagonist)
+  - `Appearance:` Rich text field or stylized card
+  - `Description:` Condensed summary version auto-filled or editable
+
+---
+
+### 📊 Right Panel (Progress Dashboard)
+- **Title:** “Progress Dashboard”
+- **Components:**
+  - **Phase Label:** “Current Phase”
+  - **Progress Bar:** Horizontal fill bar with percentage (`▰▰▱▱▱`)
+  - **Task Display:** "Outline key events" (dynamic task list)
+- **Optional Extras:**
+  - Expandable milestone tracker
+  - Phase-switcher dropdown (for manual overrides or advanced users)
+
+---
+
+### 🧰 Bottom Command Bar
+- **Quick Commands:** `/generate`, `/back`, `/save`, `help`
+- **Tip Integration:**  
+  Example:
+  ```
+  💡 Tip: Use /simulate to test reactions
+  ```
+- **Interaction Style:** CLI-feel with autocomplete dropdowns or command suggestion panel
+
+---
+
+## 🧩 Modular Component Suggestions
+
+| Component | Purpose |
+|----------|---------|
+| **Character Card Preview** | Small expandable window with character stats |
+| **Timeline Slider** | Visualize emotional/plot arc |
+| **Voice Generator** | Button to test dialogue or voice tone |
+| **Relationship Mapper** | Radial diagram pop-up for linking characters |
+
+---
+
+## 💻 Dev Stack Suggestions for This UI
+
+| Area | Stack |
+|------|------|
+| UI Framework | React + Tailwind CSS or Chakra UI |
+| Desktop App | Electron.js |
+| Mobile App | React Native |
+| Image Generation | DALL·E API or Replicate |
+| Command Logic | GPT-4o backend / Ollama |
+| Local Storage | IndexedDB or SQLite |
+| Syncing | Notion API / Obsidian plugin |
+
+---
+
