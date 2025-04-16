@@ -1,0 +1,96 @@
+Update styling first then create a home page login 
+
+---
+
+## 🎨 **Updated Styling & Thematic Breakdown**
+
+### 🔥 Overall Theme
+**Visual Mood:** Cinematic, moody, mysterious  
+**Inspiration:** Epic film title sequence meets storytelling UI  
+**Style Keywords:** Golden serif, smoky backgrounds, rich contrast, modern mysticism
+
+---
+
+## 🎨 **Color Palette**
+
+| Role | Color | Hex |
+|------|-------|-----|
+| **Background** | Deep blackened amber gradient | `#1B1A17` to `#3E2C1D` |
+| **Title Text** | Burnished gold | `#D9A85B` |
+| **Body Text** | Muted parchment | `#E6D9BF` |
+| **Buttons (Base)** | Soft matte dark | `#2F2A24` |
+| **Button Border/Icons** | Warm gold | `#D9A85B` |
+| **Hover Glow/Shadow** | Faint gold radial blur | `rgba(217, 168, 91, 0.3)` |
+
+---
+
+## 🖋️ **Typography**
+
+| Element | Font Style | Suggestion |
+|--------|-------------|------------|
+| **Main Title** | Serif Display, All Caps, Bold | `Cinzel`, `Playfair Display`, or `Cormorant Garamond` |
+| **Subtext** | Serif or Transitional Serif, Regular | `Spectral`, `EB Garamond`, or `Georgia` |
+| **Buttons** | Sans-serif Uppercase, Medium | `Inter`, `DM Sans`, `Poppins` |
+
+---
+
+## 🧩 **Layout Structure**
+
+### 🏛 Header Section
+- **Centered Title:** "5D CHARACTER CREATOR" (stacked, hero-sized)
+- **Subtitle:**  
+  *"Use AI to create realistic characters for your stories, generate character images, and track your progress with ease."*
+- **Typography Scale:**
+  - Title: `clamp(48px, 7vw, 96px)`
+  - Subtitle: `clamp(18px, 2vw, 24px)`
+
+### 🎯 CTA Buttons
+- **Layout:** Horizontally aligned (centered under subtitle)
+- **Button Specs:**
+  ```css
+  .cta-button {
+    background-color: #2F2A24;
+    border: 2px solid #D9A85B;
+    color: #E6D9BF;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+  }
+
+  .cta-button:hover {
+    background-color: #3E2C1D;
+    box-shadow: 0 0 10px rgba(217, 168, 91, 0.2);
+  }
+  ```
+
+- **Icon Support:** Left-aligned SVG icon (Notion/Obsidian) in monochrome or golden
+
+---
+
+## 🌫️ **Background Visuals**
+
+| Element | Description |
+|---------|-------------|
+| **Backdrop** | Radial gradient or smoky texture transitioning from black → warm brown |
+| **Lighting** | Subtle glow or rim light toward the upper center or right |
+| **Motion (Optional)** | Slight particle drift, slow zoom-in for immersive feel |
+| **Layer Depth** | Use soft shadows behind floating panels (for future UI components)
+
+---
+
+## 🪄 UX Enhancements
+
+| Feature | Recommendation |
+|--------|----------------|
+| **Notion Button** | Directs to Notion Wiki or OAuth sync |
+| **Obsidian Button** | Exports to `.md` or integrates with local Obsidian vault |
+| **Intro Animation** | Fade-in + title slide-up (~1s) |
+| **Tooltip on Hover** | Show "Sync your workspace" when hovering Notion/Obsidian buttons |
+
+---
+

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@400;600;700&family=Spectral:wght@300;400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,48 +6,49 @@
 
 @layer base {
   :root {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 98%;
+    /* Base colors from the cinematic palette */
+    --background: 36 13% 10%; /* #1B1A17 */
+    --foreground: 43 55% 83%; /* #E6D9BF */
     
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 98%;
+    --card: 33 17% 16%; /* #2F2A24 */
+    --card-foreground: 43 55% 83%; /* #E6D9BF */
     
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 33 17% 16%; /* #2F2A24 */
+    --popover-foreground: 43 55% 83%; /* #E6D9BF */
     
-    --primary: 45 57% 52%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 38 60% 58%; /* #D9A85B */
+    --primary-foreground: 36 13% 10%; /* #1B1A17 */
     
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 33 17% 16%; /* #2F2A24 */
+    --secondary-foreground: 43 55% 83%; /* #E6D9BF */
     
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 64%;
+    --muted: 33 17% 16%; /* #2F2A24 */
+    --muted-foreground: 38 15% 60%; /* Muted version of parchment color */
     
-    --accent: 33 100% 65%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 38 60% 58%; /* #D9A85B */
+    --accent-foreground: 36 13% 10%; /* #1B1A17 */
     
     --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 43 55% 83%; /* #E6D9BF */
     
-    --border: 240 4% 20%;
-    --input: 240 4% 20%;
-    --ring: 45 57% 52%;
+    --border: 38 60% 58%; /* #D9A85B */
+    --input: 33 17% 16%; /* #2F2A24 */
+    --ring: 38 60% 58%; /* #D9A85B */
     
-    --chart-1: 45 57% 52%;
-    --chart-2: 33 100% 65%;
-    --chart-3: 210 40% 50%;
+    --chart-1: 38 60% 58%; /* #D9A85B */
+    --chart-2: 43 55% 83%; /* #E6D9BF */
+    --chart-3: 34 24% 18%; /* #3E2C1D */
     --chart-4: 120 40% 55%;
     --chart-5: 280 50% 60%;
 
-    --sidebar-background: 0 0% 12%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 45 57% 52%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 33 100% 65%;
-    --sidebar-accent-foreground: 0 0% 5%;
-    --sidebar-border: 240 4% 20%;
-    --sidebar-ring: 45 57% 52%;
+    --sidebar-background: 34 24% 18%; /* #3E2C1D */
+    --sidebar-foreground: 43 55% 83%; /* #E6D9BF */
+    --sidebar-primary: 38 60% 58%; /* #D9A85B */
+    --sidebar-primary-foreground: 36 13% 10%; /* #1B1A17 */
+    --sidebar-accent: 38 60% 58%; /* #D9A85B */
+    --sidebar-accent-foreground: 36 13% 10%; /* #1B1A17 */
+    --sidebar-border: 38 60% 58%; /* #D9A85B */
+    --sidebar-ring: 38 60% 58%; /* #D9A85B */
   }
 
   * {
@@ -68,5 +69,94 @@
 
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .font-playfair {
+    font-family: 'Playfair Display', serif;
+  }
+  
+  .font-spectral {
+    font-family: 'Spectral', serif;
+  }
+  
+  /* Cinematic styling components */
+  .cinematic-bg {
+    background: radial-gradient(circle at top right, #3E2C1D, #1B1A17);
+    position: relative;
+  }
+  
+  .cinematic-bg::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.1'/%3E%3C/svg%3E");
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .cinematic-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: clamp(48px, 7vw, 96px);
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    color: #D9A85B;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .cinematic-subtitle {
+    font-family: 'Spectral', serif;
+    font-size: clamp(18px, 2vw, 24px);
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    color: #E6D9BF;
+    max-width: 800px;
+    margin: 1.5rem auto;
+  }
+  
+  .cta-button {
+    background-color: #2F2A24;
+    border: 2px solid #D9A85B;
+    color: #E6D9BF;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .cta-button:hover {
+    background-color: #3E2C1D;
+    box-shadow: 0 0 10px rgba(217, 168, 91, 0.2);
+  }
+  
+  /* Animate fade-in for hero section */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 1s ease-out forwards;
+  }
+  
+  .animate-fade-in-delay-1 {
+    animation: fadeIn 1s ease-out 0.2s forwards;
+    opacity: 0;
+  }
+  
+  .animate-fade-in-delay-2 {
+    animation: fadeIn 1s ease-out 0.4s forwards;
+    opacity: 0;
   }
 }
