@@ -10,6 +10,9 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, data: Partial<InsertUser>): Promise<User>;
   updateLastLogin(id: number): Promise<void>;
+  createPasswordResetToken(email: string): Promise<string | null>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
+  resetPassword(token: string, newPassword: string): Promise<boolean>;
   
   // Character methods
   getAllCharacters(): Promise<Character[]>;
@@ -194,6 +197,66 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ lastLogin: new Date().toISOString() })
       .where(eq(users.id, id));
+  }
+  
+  async createPasswordResetToken(email: string): Promise<string | null> {
+    const user = await this.getUserByEmail(email);
+    if (!user) {
+      return null;
+    }
+    
+    // Create a random token
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Token expires in 1 hour
+    const expiry = new Date();
+    expiry.setHours(expiry.getHours() + 1);
+    
+    // Update user with token and expiry
+    await db
+      .update(users)
+      .set({ 
+        resetToken: token, 
+        resetTokenExpiry: expiry.toISOString() 
+      })
+      .where(eq(users.id, user.id));
+    
+    return token;
+  }
+  
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    const now = new Date().toISOString();
+    
+    // Find user with matching token that has not expired
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.resetToken, token))
+      .where(sql`${users.resetTokenExpiry} > ${now}`);
+    
+    return user || undefined;
+  }
+  
+  async resetPassword(token: string, newPassword: string): Promise<boolean> {
+    const user = await this.getUserByResetToken(token);
+    if (!user) {
+      return false;
+    }
+    
+    // Hash the new password
+    const hashedPassword = await hashPassword(newPassword);
+    
+    // Update the user's password and clear the reset token
+    await db
+      .update(users)
+      .set({
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null
+      })
+      .where(eq(users.id, user.id));
+    
+    return true;
   }
 
   async getAllCharacters(): Promise<Character[]> {
