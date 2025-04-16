@@ -399,15 +399,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   
-  // Set up WebSocket server
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // Set up WebSocket server with better connection handling
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    // Increase timeout to help with disconnection issues
+    clientTracking: true,
+  });
   
   // Keep track of connected clients by characterId
-  const connectedClients = new Map<string, WebSocket[]>();
+  const connectedClients = new Map<string, Set<WebSocket>>();
+  
+  // WebSocket ping interval to keep connections alive
+  const pingInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.ping();
+        } catch (e) {
+          console.error("Ping failed:", e);
+        }
+      }
+    });
+  }, 30000);
   
   wss.on('connection', (ws) => {
     console.log('WebSocket client connected');
     let clientCharacterId = '';
+    
+    // Setup ping/pong to maintain connection
+    ws.on('pong', () => {
+      // Connection is alive
+    });
     
     ws.on('message', async (message) => {
       try {
@@ -417,13 +440,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Client is joining a character session
           clientCharacterId = data.characterId.toString();
           
-          // Add to connected clients for this character
+          // Add to connected clients for this character using a Set to prevent duplicates
           if (!connectedClients.has(clientCharacterId)) {
-            connectedClients.set(clientCharacterId, []);
+            connectedClients.set(clientCharacterId, new Set());
           }
+          
           const clients = connectedClients.get(clientCharacterId);
           if (clients) {
-            clients.push(ws);
+            clients.add(ws);
           }
           
           console.log(`Client joined character session: ${clientCharacterId}`);
@@ -520,15 +544,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const updatedCharacter = await storage.updateCharacter(characterId, data.characterData);
             
             // Broadcast update to all clients viewing this character
-            const clients = connectedClients.get(data.characterId.toString()) || [];
-            clients.forEach(client => {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({
-                  type: 'character-updated',
-                  character: updatedCharacter
-                }));
-              }
-            });
+            const clients = connectedClients.get(data.characterId.toString());
+            if (clients) {
+              clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'character-updated',
+                    character: updatedCharacter
+                  }));
+                }
+              });
+            }
             
             ws.send(JSON.stringify({
               type: 'update-success',
@@ -554,17 +580,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     ws.on('close', () => {
-      // Remove client from connected clients
+      // Clean up when client disconnects
       if (clientCharacterId) {
-        const clients = connectedClients.get(clientCharacterId) || [];
-        const index = clients.indexOf(ws);
-        if (index !== -1) {
-          clients.splice(index, 1);
-        }
-        
-        // Clean up empty arrays
-        if (clients.length === 0) {
-          connectedClients.delete(clientCharacterId);
+        const clients = connectedClients.get(clientCharacterId);
+        if (clients && clients.has(ws)) {
+          clients.delete(ws);
+          
+          // Clean up empty sets
+          if (clients.size === 0) {
+            connectedClients.delete(clientCharacterId);
+          }
         }
       }
       

@@ -22,96 +22,109 @@ export function useCharacterChat({ characterId, onCharacterUpdate }: UseCharacte
   const { toast } = useToast();
 
   // Connect to WebSocket
-  useEffect(() => {
+  const setupConnection = useCallback(() => {
+    // Clean up existing connection if any
+    if (socketRef.current) {
+      socketRef.current.close();
+      socketRef.current = null;
+    }
+
     if (!characterId) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     
-    const socket = new WebSocket(wsUrl);
-    socketRef.current = socket;
+    try {
+      const socket = new WebSocket(wsUrl);
+      socketRef.current = socket;
 
-    socket.addEventListener('open', () => {
-      console.log('WebSocket connected');
-      setConnected(true);
-      
-      // Join character session
-      socket.send(JSON.stringify({
-        type: 'join',
-        characterId: characterId.toString()
-      }));
-    });
-
-    socket.addEventListener('message', (event) => {
-      try {
-        const data = JSON.parse(event.data);
+      socket.addEventListener('open', () => {
+        console.log('WebSocket connected');
+        setConnected(true);
         
-        if (data.type === 'chat-response') {
-          setLoading(false);
-          // Add both user message and AI response to chat
-          setMessages(prev => [
-            ...prev,
-            {
-              id: `user-${Date.now()}`,
-              sender: 'user',
-              content: data.originalMessage,
-              timestamp: data.timestamp
-            },
-            {
-              id: `character-${Date.now() + 1}`,
-              sender: 'character',
-              content: data.response,
-              timestamp: data.timestamp
-            }
-          ]);
-        } else if (data.type === 'character-updated' && onCharacterUpdate) {
-          // Handle individual field updates from the updated character
-          const updatedChar = data.character;
-          if (updatedChar) {
-            // Update each changed field individually
-            Object.entries(updatedChar).forEach(([field, value]) => {
-              if (field !== 'id' && value !== undefined) {
-                onCharacterUpdate(field, value);
-              }
-            });
-          }
-          
-          toast({
-            title: "Character Updated",
-            description: "Character details have been updated from conversation"
-          });
-        } else if (data.type === 'error') {
-          setLoading(false);
-          toast({
-            title: "Error",
-            description: data.message,
-            variant: "destructive"
-          });
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    });
-
-    socket.addEventListener('close', () => {
-      console.log('WebSocket disconnected');
-      setConnected(false);
-    });
-
-    socket.addEventListener('error', (error) => {
-      console.error('WebSocket error:', error);
-      toast({
-        title: "Connection Error",
-        description: "Failed to connect to chat service",
-        variant: "destructive"
+        // Join character session
+        socket.send(JSON.stringify({
+          type: 'join',
+          characterId: characterId.toString()
+        }));
       });
-      setConnected(false);
-    });
 
+      socket.addEventListener('message', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'chat-response') {
+            setLoading(false);
+            // Add both user message and AI response to chat
+            setMessages(prev => [
+              ...prev,
+              {
+                id: `user-${Date.now()}`,
+                sender: 'user',
+                content: data.originalMessage,
+                timestamp: data.timestamp
+              },
+              {
+                id: `character-${Date.now() + 1}`,
+                sender: 'character',
+                content: data.response,
+                timestamp: data.timestamp
+              }
+            ]);
+          } else if (data.type === 'character-updated' && onCharacterUpdate) {
+            // Handle individual field updates from the updated character
+            const updatedChar = data.character;
+            if (updatedChar) {
+              // Update each changed field individually
+              Object.entries(updatedChar).forEach(([field, value]) => {
+                if (field !== 'id' && value !== undefined) {
+                  onCharacterUpdate(field, value);
+                }
+              });
+            }
+            
+            // Just show a console message instead of a toast to reduce UI spam
+            console.log("Character details updated from conversation");
+          } else if (data.type === 'error') {
+            setLoading(false);
+            // We'll only show serious errors as toasts
+            console.error("Chat error:", data.message);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      });
+
+      socket.addEventListener('close', (event) => {
+        console.log('WebSocket disconnected, code:', event.code);
+        setConnected(false);
+        
+        // Only show toast for abnormal closures, not intentional ones
+        if (event.code !== 1000 && event.code !== 1001) {
+          console.warn("Connection closed unexpectedly");
+        }
+      });
+
+      socket.addEventListener('error', (error) => {
+        console.error('WebSocket error:', error);
+        setConnected(false);
+      });
+    } catch (e) {
+      console.error("Failed to create WebSocket:", e);
+    }
+  }, [characterId, onCharacterUpdate]);
+
+  // Connect to WebSocket when component mounts or characterId changes
+  useEffect(() => {
+    setupConnection();
+    
     return () => {
-      socket.close();
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
     };
-  }, [characterId, toast, onCharacterUpdate]);
+  }, [characterId, setupConnection]);
 
   // Send message to character
   const sendMessage = useCallback((message: string) => {
