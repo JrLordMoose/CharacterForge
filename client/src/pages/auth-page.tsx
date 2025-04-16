@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useRoute, useParams } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +19,7 @@ import {
   FormMessage
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Form validation schemas
 const loginSchema = z.object({
@@ -32,13 +33,35 @@ const registerSchema = loginSchema.extend({
   bio: z.string().optional(),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Valid email is required"),
+});
+
+const resetPasswordSchema = z.object({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
+type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [, setLocation] = useLocation();
-  const { user, loginMutation, registerMutation } = useAuth();
+  const [match, params] = useRoute<{ token: string }>("/auth/reset-password/:token");
+  const { 
+    user, 
+    loginMutation, 
+    registerMutation, 
+    forgotPasswordMutation, 
+    resetPasswordMutation 
+  } = useAuth();
 
   // Create form handlers
   const loginForm = useForm<LoginFormValues>({
@@ -60,12 +83,27 @@ export default function AuthPage() {
     },
   });
 
-  // Redirect if user is already logged in
+  const forgotPasswordForm = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const resetPasswordForm = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  // Redirect if user is already logged in (except for reset password route)
   useEffect(() => {
-    if (user) {
+    if (user && !match) {
       setLocation("/");
     }
-  }, [user, setLocation]);
+  }, [user, setLocation, match]);
 
   // Form submission handlers
   const onLoginSubmit = (data: LoginFormValues) => {
@@ -75,6 +113,99 @@ export default function AuthPage() {
   const onRegisterSubmit = (data: RegisterFormValues) => {
     registerMutation.mutate(data);
   };
+  
+  const onForgotPasswordSubmit = (data: ForgotPasswordFormValues) => {
+    forgotPasswordMutation.mutate(data, {
+      onSuccess: () => {
+        // Switch back to login view after successful submission
+        setShowForgotPassword(false);
+      }
+    });
+  };
+  
+  const onResetPasswordSubmit = (data: ResetPasswordFormValues) => {
+    if (match && params?.token) {
+      resetPasswordMutation.mutate({
+        token: params.token,
+        password: data.password
+      }, {
+        onSuccess: () => {
+          // Redirect to login page after successfully resetting password
+          setLocation("/auth");
+        }
+      });
+    }
+  };
+
+  // Render password reset form if on reset password route
+  if (match && params?.token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-8">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl font-cinzel text-primary">Reset Your Password</CardTitle>
+            <CardDescription>
+              Please enter your new password below
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...resetPasswordForm}>
+              <form onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)} className="space-y-4">
+                <FormField
+                  control={resetPasswordForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter new password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={resetPasswordForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Confirm new password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={resetPasswordMutation.isPending}
+                >
+                  {resetPasswordMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                      Resetting Password...
+                    </>
+                  ) : (
+                    "Reset Password"
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+          <CardFooter className="flex justify-center">
+            <Button 
+              variant="link" 
+              onClick={() => setLocation("/auth")}
+            >
+              Back to Login
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -147,55 +278,122 @@ export default function AuthPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                      <FormField
-                        control={loginForm.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Username</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter your username" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={loginForm.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="Enter your password" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button 
-                        type="submit" 
-                        className="w-full" 
-                        disabled={loginMutation.isPending}
-                      >
-                        {loginMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                            Logging in...
-                          </>
-                        ) : (
-                          "Login"
-                        )}
-                      </Button>
-                    </form>
-                  </Form>
+                  {!showForgotPassword ? (
+                    /* Regular Login Form */
+                    <Form {...loginForm}>
+                      <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                        <FormField
+                          control={loginForm.control}
+                          name="username"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Username</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter your username" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={loginForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" placeholder="Enter your password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="flex justify-end mb-2">
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto text-sm"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setShowForgotPassword(true);
+                            }}
+                          >
+                            Forgot password?
+                          </Button>
+                        </div>
+                        <Button 
+                          type="submit" 
+                          className="w-full" 
+                          disabled={loginMutation.isPending}
+                        >
+                          {loginMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                              Logging in...
+                            </>
+                          ) : (
+                            "Login"
+                          )}
+                        </Button>
+                      </form>
+                    </Form>
+                  ) : (
+                    /* Forgot Password Form */
+                    <Form {...forgotPasswordForm}>
+                      <form onSubmit={forgotPasswordForm.handleSubmit(onForgotPasswordSubmit)} className="space-y-4">
+                        <div className="mb-4">
+                          <h3 className="text-lg font-medium">Reset Your Password</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Enter your email address and we'll send you a link to reset your password.
+                          </p>
+                        </div>
+                        <FormField
+                          control={forgotPasswordForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input type="email" placeholder="Enter your email" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button 
+                          type="submit" 
+                          className="w-full" 
+                          disabled={forgotPasswordMutation.isPending}
+                        >
+                          {forgotPasswordMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                              Sending...
+                            </>
+                          ) : (
+                            "Send Reset Link"
+                          )}
+                        </Button>
+                        <Button
+                          variant="link"
+                          className="w-full mt-2"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setShowForgotPassword(false);
+                          }}
+                        >
+                          Back to Login
+                        </Button>
+                      </form>
+                    </Form>
+                  )}
                 </CardContent>
                 <CardFooter className="flex justify-center">
                   <Button 
                     variant="link" 
-                    onClick={() => setActiveTab("register")}
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setActiveTab("register");
+                    }}
                   >
                     Don't have an account? Register
                   </Button>
