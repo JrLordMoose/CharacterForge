@@ -12,6 +12,8 @@ export const users = pgTable("users", {
   avatarUrl: text("avatar_url"),
   createdAt: text("created_at").notNull().default(new Date().toISOString()),
   lastLogin: text("last_login"),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: text("reset_token_expiry"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
