@@ -1,8 +1,8 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertCharacterSchema, updateCharacterSchema } from "@shared/schema";
+import { insertCharacterSchema, updateCharacterSchema, User as SelectUser } from "@shared/schema";
 import { ZodError } from "zod";
 import OpenAI from "openai";
 import { WebSocketServer, WebSocket } from "ws";
@@ -12,24 +12,36 @@ import {
   isNotionAvailable,
   updateNotionPage
 } from './notion';
+import { setupAuth } from "./auth";
 
 // Configure OpenAI
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY || "sk-dummy-key-for-development" 
 });
 
+// Authentication middleware
+function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized" });
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
   // Character CRUD operations
-  app.get("/api/characters", async (req: Request, res: Response) => {
+  app.get("/api/characters", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const characters = await storage.getAllCharacters();
+      const userId = (req.user as SelectUser).id;
+      const characters = await storage.getCharactersByUserId(userId);
       res.json(characters);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch characters" });
     }
   });
 
-  app.get("/api/characters/:id", async (req: Request, res: Response) => {
+  app.get("/api/characters/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -41,16 +53,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Character not found" });
       }
       
+      // Check if character belongs to the authenticated user
+      const userId = (req.user as SelectUser).id;
+      if (character.userId !== userId) {
+        return res.status(403).json({ message: "You don't have permission to access this character" });
+      }
+      
       res.json(character);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch character" });
     }
   });
 
-  app.post("/api/characters", async (req: Request, res: Response) => {
+  app.post("/api/characters", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = (req.user as SelectUser).id;
       const validatedData = insertCharacterSchema.parse(req.body);
-      const character = await storage.createCharacter(validatedData);
+      const character = await storage.createCharacter(validatedData, userId);
       res.status(201).json(character);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -60,19 +79,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/characters/:id", async (req: Request, res: Response) => {
+  app.patch("/api/characters/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid character ID" });
       }
       
-      const validatedData = updateCharacterSchema.parse(req.body);
       const character = await storage.getCharacter(id);
       if (!character) {
         return res.status(404).json({ message: "Character not found" });
       }
       
+      // Check if character belongs to the authenticated user
+      const userId = (req.user as SelectUser).id;
+      if (character.userId !== userId) {
+        return res.status(403).json({ message: "You don't have permission to update this character" });
+      }
+      
+      const validatedData = updateCharacterSchema.parse(req.body);
       const updatedCharacter = await storage.updateCharacter(id, validatedData);
       res.json(updatedCharacter);
     } catch (error) {
@@ -83,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/characters/:id", async (req: Request, res: Response) => {
+  app.delete("/api/characters/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -95,6 +120,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Character not found" });
       }
       
+      // Check if character belongs to the authenticated user
+      const userId = (req.user as SelectUser).id;
+      if (character.userId !== userId) {
+        return res.status(403).json({ message: "You don't have permission to delete this character" });
+      }
+      
       await storage.deleteCharacter(id);
       res.status(204).send();
     } catch (error) {
@@ -103,7 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image generation with OpenAI
-  app.post("/api/generate-image", async (req: Request, res: Response) => {
+  app.post("/api/generate-image", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { prompt } = req.body;
       if (!prompt) {
