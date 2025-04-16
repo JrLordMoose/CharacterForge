@@ -1,6 +1,8 @@
 import { characters, type Character, type InsertCharacter, type UpdateCharacter, users, type User, type InsertUser } from "@shared/schema";
 import { db } from './db';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import * as crypto from 'crypto';
+import { hashPassword } from './auth';
 
 export interface IStorage {
   // User methods
@@ -59,7 +61,9 @@ export class MemStorage implements IStorage {
       ...insertUser, 
       id, 
       createdAt: now,
-      lastLogin: null
+      lastLogin: null,
+      resetToken: null,
+      resetTokenExpiry: null
     };
     this.users.set(id, user);
     return user;
@@ -81,6 +85,57 @@ export class MemStorage implements IStorage {
       user.lastLogin = new Date().toISOString();
       this.users.set(id, user);
     }
+  }
+  
+  async createPasswordResetToken(email: string): Promise<string | null> {
+    const allUsers = Array.from(this.users.values());
+    const user = allUsers.find(user => user.email === email);
+    if (!user) {
+      return null;
+    }
+    
+    // Create a random token
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Token expires in 1 hour
+    const expiry = new Date();
+    expiry.setHours(expiry.getHours() + 1);
+    
+    // Update user with token and expiry
+    user.resetToken = token;
+    user.resetTokenExpiry = expiry.toISOString();
+    this.users.set(user.id, user);
+    
+    return token;
+  }
+  
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    const now = new Date().toISOString();
+    const allUsers = Array.from(this.users.values());
+    
+    return allUsers.find(user => 
+      user.resetToken === token && 
+      user.resetTokenExpiry && 
+      user.resetTokenExpiry > now
+    );
+  }
+  
+  async resetPassword(token: string, newPassword: string): Promise<boolean> {
+    const user = await this.getUserByResetToken(token);
+    if (!user) {
+      return false;
+    }
+    
+    // Hash the new password
+    const hashedPassword = await hashPassword(newPassword);
+    
+    // Update the user's password and clear the reset token
+    user.password = hashedPassword;
+    user.resetToken = null;
+    user.resetTokenExpiry = null;
+    this.users.set(user.id, user);
+    
+    return true;
   }
 
   async getAllCharacters(): Promise<Character[]> {

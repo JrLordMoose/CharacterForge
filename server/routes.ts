@@ -13,6 +13,7 @@ import {
   updateNotionPage
 } from './notion';
 import { setupAuth } from "./auth";
+import { sendPasswordResetEmail } from "./email";
 
 // Configure OpenAI
 const openai = new OpenAI({ 
