@@ -40,9 +40,9 @@ export function Sidebar() {
       <div className="p-4 mt-auto border-t border-border">
         <div className="flex items-center space-x-3">
           <Link href="/character/new">
-            <button className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary/90">
+            <a className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary/90">
               <Plus className="w-4 h-4" />
-            </button>
+            </a>
           </Link>
           <button className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary/90">
             <Edit className="w-4 h-4" />
