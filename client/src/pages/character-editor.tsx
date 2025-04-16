@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/sidebar';
 import { CommandInterface } from '@/components/command-interface';
 import { CharacterWorkspace } from '@/components/character-workspace';
 import { CharacterChatDialog } from '@/components/character-chat-dialog';
+import { NotionExportDialog } from '@/components/notion-export-dialog';
 import { useCharacter } from '@/context/character-context';
 import { Character } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +32,7 @@ export default function CharacterEditor() {
   const [simulationScenario, setSimulationScenario] = useState('');
   const [simulationResult, setSimulationResult] = useState('');
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
+  const [notionExportOpen, setNotionExportOpen] = useState(false);
   
   useEffect(() => {
     if (!isNew) {
@@ -130,11 +132,22 @@ export default function CharacterEditor() {
           });
         }
         break;
+      case '/export':
+      case '/notion':
+        if (!isNew) {
+          setNotionExportOpen(true);
+        } else {
+          toast({
+            title: "Cannot export yet",
+            description: "Please save the character first before exporting to Notion"
+          });
+        }
+        break;
       case '/help':
       case 'help':
         toast({
           title: "Available Commands",
-          description: "/save - Save current character\n/back - Return to home\n/generate [text] - Generate description\n/simulate [scenario] - Simulate character response\n/chat - Open character chat dialog"
+          description: "/save - Save current character\n/back - Return to home\n/generate [text] - Generate description\n/simulate [scenario] - Simulate character response\n/chat - Open character chat dialog\n/export - Export character to Notion"
         });
         break;
       default:
@@ -205,6 +218,15 @@ export default function CharacterEditor() {
           onOpenChange={setChatDialogOpen}
           character={character as Character}
           onCharacterUpdate={handleUpdate}
+        />
+      )}
+      
+      {/* Notion Export Dialog */}
+      {!isNew && (
+        <NotionExportDialog
+          open={notionExportOpen}
+          onOpenChange={setNotionExportOpen}
+          character={character as Character}
         />
       )}
     </div>
