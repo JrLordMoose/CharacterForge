@@ -354,6 +354,67 @@ export function CharacterWorkspace({
           </div>
         </div>
       </div>
+      
+      {/* Simulation Dialog */}
+      <Dialog open={simulateDialogOpen} onOpenChange={setSimulateDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] bg-black/80 border-amber-600/50">
+          <DialogHeader>
+            <DialogTitle className="text-amber-400">Character Simulation</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              How {character.name} would respond to: {simulationScenario}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mt-4 space-y-4">
+            <div className="p-4 rounded-lg bg-black/30 border border-border">
+              <div className="flex items-start mb-2">
+                <div className="mr-3 flex-shrink-0">
+                  <UserIcon className="w-6 h-6 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-muted-foreground">{simulationScenario}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 rounded-lg bg-secondary/20 border border-primary/30">
+              <div className="flex items-start mb-2">
+                <div className="mr-3 flex-shrink-0">
+                  {character.imageUrl ? (
+                    <img src={character.imageUrl} alt={character.name} className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center">
+                      <span className="text-primary-foreground text-xs">{character.name?.charAt(0) || "C"}</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-primary mb-1">{character.name}</p>
+                  <p className="text-foreground whitespace-pre-wrap">{simulationResult}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="mt-6">
+            <div className="flex w-full">
+              <Textarea 
+                value={simulationScenario}
+                onChange={(e) => setSimulationScenario(e.target.value)}
+                placeholder="Enter a scenario to test the character's reaction..."
+                className="flex-1 mr-2 bg-secondary/30 border-border"
+              />
+              <Button 
+                onClick={() => handleSimulate(simulationScenario)}
+                disabled={simulatingResponse || !simulationScenario.trim()}
+                className="bg-amber-900/40 border border-amber-600/50 text-amber-400 hover:bg-amber-900/60 hover:text-amber-300"
+              >
+                {simulatingResponse ? 'Simulating...' : 'Test'}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
