@@ -177,10 +177,11 @@ export class MemStorage implements IStorage {
   }
 
   private async seedCharacters() {
-    // Create a demo user first
+    // Create a demo user first with properly hashed password
+    const hashedPassword = await hashPassword("demo123");
     const demoUser = await this.createUser({
       username: "demo",
-      password: "demo123", // in a real app, this would be hashed
+      password: hashedPassword,
       email: "demo@example.com",
       displayName: "Demo User",
       bio: "This is a demo account for exploring the application",
