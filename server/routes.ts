@@ -6,6 +6,12 @@ import { insertCharacterSchema, updateCharacterSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import OpenAI from "openai";
 import { WebSocketServer, WebSocket } from "ws";
+import { 
+  exportCharacterToNotion, 
+  getNotionDatabases, 
+  isNotionAvailable,
+  updateNotionPage
+} from './notion';
 
 // Configure OpenAI
 const openai = new OpenAI({ 
@@ -463,5 +469,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Notion Integration Routes
+  app.get("/api/notion/status", async (req: Request, res: Response) => {
+    try {
+      res.json({ available: isNotionAvailable() });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to check Notion status", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  app.get("/api/notion/databases", async (req: Request, res: Response) => {
+    try {
+      if (!isNotionAvailable()) {
+        return res.status(400).json({ message: "Notion integration is not available" });
+      }
+      
+      const databases = await getNotionDatabases();
+      res.json(databases);
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to fetch Notion databases", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  app.post("/api/notion/export-character", async (req: Request, res: Response) => {
+    try {
+      if (!isNotionAvailable()) {
+        return res.status(400).json({ message: "Notion integration is not available" });
+      }
+      
+      const { characterId, databaseId } = req.body;
+      
+      if (!characterId || !databaseId) {
+        return res.status(400).json({ message: "Character ID and Database ID are required" });
+      }
+      
+      const id = parseInt(characterId);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid character ID" });
+      }
+      
+      const character = await storage.getCharacter(id);
+      if (!character) {
+        return res.status(404).json({ message: "Character not found" });
+      }
+      
+      const pageUrl = await exportCharacterToNotion(character, databaseId);
+      res.json({ success: true, pageUrl });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to export character to Notion", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  app.post("/api/notion/update-character", async (req: Request, res: Response) => {
+    try {
+      if (!isNotionAvailable()) {
+        return res.status(400).json({ message: "Notion integration is not available" });
+      }
+      
+      const { pageId, characterId } = req.body;
+      
+      if (!pageId || !characterId) {
+        return res.status(400).json({ message: "Page ID and Character ID are required" });
+      }
+      
+      const id = parseInt(characterId);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid character ID" });
+      }
+      
+      const character = await storage.getCharacter(id);
+      if (!character) {
+        return res.status(404).json({ message: "Character not found" });
+      }
+      
+      await updateNotionPage(pageId, character);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to update character in Notion", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
   return httpServer;
 }
