@@ -5,12 +5,13 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User } from "@shared/schema";
+import type { User as UserType } from "@shared/schema";
 import createMemoryStore from "memorystore";
 
 declare global {
   namespace Express {
-    interface User extends User {}
+    // Define the User interface extending from the schema User type
+    interface User extends UserType {}
   }
 }
 
