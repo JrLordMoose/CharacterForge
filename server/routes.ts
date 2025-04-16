@@ -31,6 +31,77 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
   setupAuth(app);
+  
+  // Password reset routes
+  app.post("/api/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // Create a password reset token
+      const token = await storage.createPasswordResetToken(email);
+      
+      if (!token) {
+        // We return success even if email is not found for security reasons
+        return res.status(200).json({ 
+          message: "If an account with that email exists, a password reset link has been sent"
+        });
+      }
+      
+      // In a production app, we would send an email with the reset link
+      // For now, we'll just return the token directly
+      const resetUrl = `${req.protocol}://${req.get('host')}/auth/reset-password/${token}`;
+      
+      // Log email that would be sent (in real app would use SendGrid)
+      await sendPasswordResetEmail(email, token, resetUrl);
+      
+      return res.status(200).json({ 
+        message: "Password reset email sent", 
+        // Include token and link in response for development
+        // In production, these would be removed
+        token,
+        resetUrl
+      });
+    } catch (error) {
+      console.error("Password reset error:", error);
+      res.status(500).json({ message: "Failed to send password reset email" });
+    }
+  });
+  
+  app.post("/api/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, password } = req.body;
+      
+      if (!token || !password) {
+        return res.status(400).json({ message: "Token and password are required" });
+      }
+      
+      // Validate password
+      const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
+      try {
+        passwordSchema.parse(password);
+      } catch (err) {
+        if (err instanceof ZodError) {
+          return res.status(400).json({ message: err.errors[0].message });
+        }
+      }
+      
+      // Reset the password
+      const success = await storage.resetPassword(token, password);
+      
+      if (!success) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+      
+      return res.status(200).json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Password reset error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
   // Character CRUD operations
   app.get("/api/characters", isAuthenticated, async (req: Request, res: Response) => {
     try {

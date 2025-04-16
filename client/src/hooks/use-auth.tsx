@@ -19,6 +19,16 @@ const registerSchema = loginUserSchema.extend({
 type LoginData = z.infer<typeof loginUserSchema>;
 type RegisterData = z.infer<typeof registerSchema>;
 
+// Password reset types
+type ForgotPasswordData = {
+  email: string;
+};
+
+type ResetPasswordData = {
+  token: string;
+  password: string;
+};
+
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
@@ -26,6 +36,8 @@ type AuthContextType = {
   loginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<User, Error, RegisterData>;
+  forgotPasswordMutation: UseMutationResult<{message: string}, Error, ForgotPasswordData>;
+  resetPasswordMutation: UseMutationResult<{message: string}, Error, ResetPasswordData>;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -105,6 +117,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (data: ForgotPasswordData) => {
+      const res = await apiRequest("POST", "/api/forgot-password", data);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Password Reset Email Sent",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send reset email",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: ResetPasswordData) => {
+      const res = await apiRequest("POST", "/api/reset-password", data);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Password Reset Successful",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to reset password",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <AuthContext.Provider
       value={{
@@ -114,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        forgotPasswordMutation,
+        resetPasswordMutation,
       }}
     >
       {children}

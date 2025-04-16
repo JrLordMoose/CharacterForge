@@ -17,6 +17,7 @@ function Router() {
       <ProtectedRoute path="/character/:id" component={CharacterEditor} />
       <ProtectedRoute path="/character/new" component={CharacterEditor} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/auth/reset-password/:token" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
