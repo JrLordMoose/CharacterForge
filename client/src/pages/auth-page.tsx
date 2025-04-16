@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CustomInput } from "@/components/ui/custom-input";
+import { BasicInput } from "@/components/ui/basic-input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -385,10 +386,12 @@ export default function AuthPage() {
                             <FormItem>
                               <FormLabel>Email</FormLabel>
                               <FormControl>
-                                <CustomInput 
+                                <BasicInput 
                                   type="text" 
                                   placeholder="Enter your email" 
-                                  {...field}
+                                  value={field.value}
+                                  onChange={(value) => field.onChange({ target: { value } } as any)}
+                                  name={field.name}
                                 />
                               </FormControl>
                               <FormMessage />
