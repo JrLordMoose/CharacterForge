@@ -3,6 +3,7 @@ import { useLocation, useRoute, useParams } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { CustomInput } from "@/components/ui/custom-input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -384,14 +385,10 @@ export default function AuthPage() {
                             <FormItem>
                               <FormLabel>Email</FormLabel>
                               <FormControl>
-                                <Input 
+                                <CustomInput 
                                   type="text" 
                                   placeholder="Enter your email" 
-                                  onChange={field.onChange}
-                                  onBlur={field.onBlur}
-                                  value={field.value}
-                                  name={field.name}
-                                  ref={field.ref}
+                                  {...field}
                                 />
                               </FormControl>
                               <FormMessage />
