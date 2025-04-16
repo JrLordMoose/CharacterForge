@@ -7,7 +7,8 @@ import { CharacterTabs } from './character-tabs';
 import { Character, CharacterTrait, CharacterRelationship } from '@shared/schema';
 import { generateCharacterImage } from '@/lib/openai';
 import { useToast } from '@/hooks/use-toast';
-import { Wand2, MessageSquare } from 'lucide-react';
+import { Wand2, MessageSquare, Sparkles } from 'lucide-react';
+import { BasicInput } from '@/components/ui/basic-input';
 
 interface CharacterWorkspaceProps {
   character: Partial<Character>;
