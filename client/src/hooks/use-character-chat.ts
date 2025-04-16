@@ -21,15 +21,22 @@ export function useCharacterChat({ characterId, onCharacterUpdate }: UseCharacte
   const socketRef = useRef<WebSocket | null>(null);
   const { toast } = useToast();
 
-  // Connect to WebSocket
+  // Web Socket connection with reconnect logic
   const setupConnection = useCallback(() => {
+    // Don't attempt to connect if no character ID is provided
+    if (!characterId) return;
+
     // Clean up existing connection if any
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      // Skip setup if we already have an active connection to the same character
+      return;
+    }
+    
+    // Close any existing socket before creating a new one
     if (socketRef.current) {
       socketRef.current.close();
       socketRef.current = null;
     }
-
-    if (!characterId) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -37,10 +44,19 @@ export function useCharacterChat({ characterId, onCharacterUpdate }: UseCharacte
     try {
       const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
+      
+      // Define connection timeout - if connection not established within 5 seconds, try again
+      const connectionTimeout = setTimeout(() => {
+        if (socket.readyState !== WebSocket.OPEN) {
+          socket.close();
+          console.log("WebSocket connection timeout, will retry");
+        }
+      }, 5000);
 
       socket.addEventListener('open', () => {
         console.log('WebSocket connected');
         setConnected(true);
+        clearTimeout(connectionTimeout);
         
         // Join character session
         socket.send(JSON.stringify({
@@ -52,6 +68,12 @@ export function useCharacterChat({ characterId, onCharacterUpdate }: UseCharacte
       socket.addEventListener('message', (event) => {
         try {
           const data = JSON.parse(event.data);
+          
+          // Handle ping messages to keep connection alive
+          if (data.type === 'ping') {
+            socket.send(JSON.stringify({ type: 'pong' }));
+            return;
+          }
           
           if (data.type === 'chat-response') {
             setLoading(false);
@@ -95,16 +117,16 @@ export function useCharacterChat({ characterId, onCharacterUpdate }: UseCharacte
         }
       });
 
+      // Handle connection close events
       socket.addEventListener('close', (event) => {
         console.log('WebSocket disconnected, code:', event.code);
         setConnected(false);
         
-        // Only show toast for abnormal closures, not intentional ones
-        if (event.code !== 1000 && event.code !== 1001) {
-          console.warn("Connection closed unexpectedly");
-        }
+        // Clear socket reference
+        socketRef.current = null;
       });
 
+      // Handle WebSocket errors
       socket.addEventListener('error', (error) => {
         console.error('WebSocket error:', error);
         setConnected(false);
@@ -116,9 +138,29 @@ export function useCharacterChat({ characterId, onCharacterUpdate }: UseCharacte
 
   // Connect to WebSocket when component mounts or characterId changes
   useEffect(() => {
+    // Initial setup
     setupConnection();
     
+    // Setup ping interval to detect stale connections
+    const pingInterval = setInterval(() => {
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        try {
+          socketRef.current.send(JSON.stringify({ type: 'ping' }));
+        } catch (e) {
+          console.warn("Failed to send ping, reconnecting...");
+          setupConnection();
+        }
+      } else if (!socketRef.current || socketRef.current.readyState !== WebSocket.CONNECTING) {
+        // Try to reconnect if socket is closed or in error state
+        setupConnection();
+      }
+    }, 30000);
+    
     return () => {
+      // Clear ping interval
+      clearInterval(pingInterval);
+      
+      // Clean up socket on unmount
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;

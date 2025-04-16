@@ -436,6 +436,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const data = JSON.parse(message.toString());
         
+        // Handle client pings for connection health
+        if (data.type === 'ping') {
+          // Respond with pong to confirm connection is alive
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'pong' }));
+          }
+          return;
+        }
+        
+        // Handle client pongs (responses to our pings)
+        if (data.type === 'pong') {
+          // Connection is alive, nothing to do
+          return;
+        }
+        
         if (data.type === 'join') {
           // Client is joining a character session
           clientCharacterId = data.characterId.toString();
