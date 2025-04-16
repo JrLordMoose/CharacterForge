@@ -1,4 +1,6 @@
 import { characters, type Character, type InsertCharacter, type UpdateCharacter, users, type User, type InsertUser } from "@shared/schema";
+import { db } from './db';
+import { eq } from 'drizzle-orm';
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -24,8 +26,6 @@ export class MemStorage implements IStorage {
     this.characterStorage = new Map();
     this.currentUserId = 1;
     this.currentCharacterId = 1;
-    
-    // Add some initial characters for demo purposes
     this.seedCharacters();
   }
 
@@ -34,9 +34,12 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    for (const user of this.users.values()) {
+      if (user.username === username) {
+        return user;
+      }
+    }
+    return undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -45,92 +48,114 @@ export class MemStorage implements IStorage {
     this.users.set(id, user);
     return user;
   }
-  
+
   async getAllCharacters(): Promise<Character[]> {
     return Array.from(this.characterStorage.values());
   }
-  
+
   async getCharacter(id: number): Promise<Character | undefined> {
     return this.characterStorage.get(id);
   }
-  
+
   async createCharacter(character: InsertCharacter): Promise<Character> {
     const id = this.currentCharacterId++;
     const newCharacter: Character = { ...character, id };
     this.characterStorage.set(id, newCharacter);
     return newCharacter;
   }
-  
+
   async updateCharacter(id: number, data: UpdateCharacter): Promise<Character> {
     const character = this.characterStorage.get(id);
     if (!character) {
-      throw new Error(`Character with ID ${id} not found`);
+      throw new Error(`Character with id ${id} not found`);
     }
-    
     const updatedCharacter: Character = { ...character, ...data };
     this.characterStorage.set(id, updatedCharacter);
     return updatedCharacter;
   }
-  
+
   async deleteCharacter(id: number): Promise<void> {
-    if (!this.characterStorage.has(id)) {
-      throw new Error(`Character with ID ${id} not found`);
-    }
-    
     this.characterStorage.delete(id);
   }
-  
+
   private seedCharacters() {
-    const sampleCharacters: InsertCharacter[] = [
-      {
-        name: "Julian Carter",
-        role: "Protagonist",
-        appearance: "A brooding young scholar haunted by his tragic past, driven to uncover the truth at any cost.",
-        description: "A brooding young scholar haunted by his tragic past",
-        folder: "My Novel",
-        category: "Protagonists",
-        progress: 40,
-        imageUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60",
-        traits: [
-          { name: "Determination", value: 4, description: "Julian's determination borders on obsession; he will pursue knowledge at almost any cost." },
-          { name: "Caution", value: 2, description: "While normally cautious, Julian's determination can override this trait when pursuing important leads." }
-        ],
-        motivations: "Julian is primarily motivated by a desire to uncover the truth about his family's mysterious past. The loss of his parents in what appeared to be an accident has driven him to pursue answers, believing there were darker forces at play. He struggles with guilt that he wasn't there to prevent their deaths.",
-        conflicts: "Julian struggles with his growing obsession and the moral compromises he's willing to make to uncover the truth. He worries he's becoming like those he's investigating. He also wrestles with survivor's guilt and questions whether his academic pursuits are merely a distraction from processing grief."
-      },
-      {
-        name: "Elara Nightshade",
-        role: "Antagonist",
-        appearance: "A poised, elegant woman with piercing eyes and an enigmatic smile that never reaches her eyes.",
-        description: "The enigmatic leader of a secret organization with mysterious goals",
-        folder: "My Novel",
-        category: "Antagonists",
-        progress: 65,
-        imageUrl: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60",
-        traits: [
-          { name: "Intelligence", value: 5, description: "Elara possesses a brilliant, analytical mind that can see ten steps ahead of her opponents." },
-          { name: "Ruthlessness", value: 4, description: "She will eliminate obstacles to her plans without hesitation, though she takes no pleasure in pointless cruelty." }
-        ]
-      },
-      {
-        name: "Marcus Wells",
-        role: "Supporting Character",
-        appearance: "A weathered professor with kind eyes behind wire-rimmed glasses, always dressed in rumpled tweed.",
-        description: "Julian's mentor and father figure who harbors his own secrets",
-        folder: "My Novel",
-        category: "Supporting Characters",
-        progress: 30,
-        imageUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60",
-        relationships: [
-          { name: "Julian Carter", relation: "Student/Mentee", description: "Sees Julian as the son he never had, but worries about his growing obsession.", strength: 4 }
-        ]
-      }
-    ];
-    
-    for (const character of sampleCharacters) {
-      this.createCharacter(character);
-    }
+    // Add some example characters
+    this.createCharacter({
+      name: "Julian Carter",
+      role: "Protagonist",
+      category: "Main Character",
+      progress: 75,
+      description: "A troubled detective with a dark past",
+      appearance: "Mid-30s, tall with haunted blue eyes and perpetual stubble. Has a distinctive scar across his left cheek.",
+      imageUrl: "https://storage.googleapis.com/pai-images/ae63495c4ab84e7593d2dea9d3fdfa45.jpeg",
+      traits: JSON.stringify([
+        { name: "Perseverance", value: 90, description: "Never gives up, even when the odds seem impossible" },
+        { name: "Introversion", value: 75, description: "Prefers to work alone, uncomfortable in social situations" },
+        { name: "Empathy", value: 60, description: "Can understand the motivations of criminals, sometimes too well" }
+      ]),
+      motivations: "Seeking redemption for past failures, driven to solve the one case that haunts him",
+      conflicts: "Internal struggle with alcoholism; External conflict with corrupt officials in the department",
+      backstory: "Former star detective who fell from grace after a high-profile case went wrong, resulting in the death of his partner. Has been working lower-profile cases since, but still maintains his sharp investigative instincts.",
+      relationships: JSON.stringify([
+        { name: "Sarah Carter", relation: "Ex-wife", description: "Still cares for him but couldn't handle his obsession with work", strength: 35 },
+        { name: "Captain Reynolds", relation: "Boss", description: "Tough but fair, gives Julian chances others wouldn't", strength: 65 }
+      ]),
+      arc: "From broken detective to finding redemption, not through solving the case, but by learning to forgive himself",
+      voice: "Speaks in short, clipped sentences. Rarely raises his voice. Occasional dry, dark humor. Uses police jargon frequently.",
+      userId: null
+    });
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async getAllCharacters(): Promise<Character[]> {
+    return db.select().from(characters);
+  }
+
+  async getCharacter(id: number): Promise<Character | undefined> {
+    const [character] = await db.select().from(characters).where(eq(characters.id, id));
+    return character || undefined;
+  }
+
+  async createCharacter(character: InsertCharacter): Promise<Character> {
+    const [newCharacter] = await db
+      .insert(characters)
+      .values(character)
+      .returning();
+    return newCharacter;
+  }
+
+  async updateCharacter(id: number, data: UpdateCharacter): Promise<Character> {
+    const [updatedCharacter] = await db
+      .update(characters)
+      .set(data)
+      .where(eq(characters.id, id))
+      .returning();
+    return updatedCharacter;
+  }
+
+  async deleteCharacter(id: number): Promise<void> {
+    await db.delete(characters).where(eq(characters.id, id));
+  }
+}
+
+// Use DatabaseStorage instead of MemStorage
+export const storage = new DatabaseStorage();
