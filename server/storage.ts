@@ -3,14 +3,19 @@ import { db } from './db';
 import { eq } from 'drizzle-orm';
 
 export interface IStorage {
+  // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, data: Partial<InsertUser>): Promise<User>;
+  updateLastLogin(id: number): Promise<void>;
   
   // Character methods
   getAllCharacters(): Promise<Character[]>;
+  getCharactersByUserId(userId: number): Promise<Character[]>;
   getCharacter(id: number): Promise<Character | undefined>;
-  createCharacter(character: InsertCharacter): Promise<Character>;
+  createCharacter(character: InsertCharacter, userId: number): Promise<Character>;
   updateCharacter(id: number, data: UpdateCharacter): Promise<Character>;
   deleteCharacter(id: number): Promise<void>;
 }
@@ -34,32 +39,67 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    for (const user of this.users.values()) {
-      if (user.username === username) {
-        return user;
-      }
-    }
-    return undefined;
+    // Using Array.from() to avoid iterator issues with Map in TS
+    const allUsers = Array.from(this.users.values());
+    return allUsers.find(user => user.username === username);
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const allUsers = Array.from(this.users.values());
+    return allUsers.find(user => user.email === email);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
+    const now = new Date().toISOString();
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      createdAt: now,
+      lastLogin: null
+    };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUser(id: number, data: Partial<InsertUser>): Promise<User> {
+    const user = this.users.get(id);
+    if (!user) {
+      throw new Error(`User with id ${id} not found`);
+    }
+    const updatedUser: User = { ...user, ...data };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async updateLastLogin(id: number): Promise<void> {
+    const user = this.users.get(id);
+    if (user) {
+      user.lastLogin = new Date().toISOString();
+      this.users.set(id, user);
+    }
   }
 
   async getAllCharacters(): Promise<Character[]> {
     return Array.from(this.characterStorage.values());
+  }
+  
+  async getCharactersByUserId(userId: number): Promise<Character[]> {
+    const allCharacters = Array.from(this.characterStorage.values());
+    return allCharacters.filter(character => character.userId === userId);
   }
 
   async getCharacter(id: number): Promise<Character | undefined> {
     return this.characterStorage.get(id);
   }
 
-  async createCharacter(character: InsertCharacter): Promise<Character> {
+  async createCharacter(character: InsertCharacter, userId: number): Promise<Character> {
     const id = this.currentCharacterId++;
-    const newCharacter: Character = { ...character, id };
+    const newCharacter: Character = { 
+      ...character, 
+      id,
+      userId 
+    };
     this.characterStorage.set(id, newCharacter);
     return newCharacter;
   }
@@ -78,9 +118,19 @@ export class MemStorage implements IStorage {
     this.characterStorage.delete(id);
   }
 
-  private seedCharacters() {
+  private async seedCharacters() {
+    // Create a demo user first
+    const demoUser = await this.createUser({
+      username: "demo",
+      password: "demo123", // in a real app, this would be hashed
+      email: "demo@example.com",
+      displayName: "Demo User",
+      bio: "This is a demo account for exploring the application",
+      avatarUrl: null
+    });
+    
     // Add some example characters
-    this.createCharacter({
+    await this.createCharacter({
       name: "Julian Carter",
       role: "Protagonist",
       category: "Main Character",
@@ -101,9 +151,8 @@ export class MemStorage implements IStorage {
         { name: "Captain Reynolds", relation: "Boss", description: "Tough but fair, gives Julian chances others wouldn't", strength: 65 }
       ]),
       arc: "From broken detective to finding redemption, not through solving the case, but by learning to forgive himself",
-      voice: "Speaks in short, clipped sentences. Rarely raises his voice. Occasional dry, dark humor. Uses police jargon frequently.",
-      userId: null
-    });
+      voice: "Speaks in short, clipped sentences. Rarely raises his voice. Occasional dry, dark humor. Uses police jargon frequently."
+    }, demoUser.id);
   }
 }
 
@@ -117,6 +166,11 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
   }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
@@ -125,9 +179,32 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
+  
+  async updateUser(id: number, data: Partial<InsertUser>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+  
+  async updateLastLogin(id: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ lastLogin: new Date().toISOString() })
+      .where(eq(users.id, id));
+  }
 
   async getAllCharacters(): Promise<Character[]> {
     return db.select().from(characters);
+  }
+  
+  async getCharactersByUserId(userId: number): Promise<Character[]> {
+    return db
+      .select()
+      .from(characters)
+      .where(eq(characters.userId, userId));
   }
 
   async getCharacter(id: number): Promise<Character | undefined> {
@@ -135,10 +212,10 @@ export class DatabaseStorage implements IStorage {
     return character || undefined;
   }
 
-  async createCharacter(character: InsertCharacter): Promise<Character> {
+  async createCharacter(character: InsertCharacter, userId: number): Promise<Character> {
     const [newCharacter] = await db
       .insert(characters)
-      .values(character)
+      .values({ ...character, userId })
       .returning();
     return newCharacter;
   }
