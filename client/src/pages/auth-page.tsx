@@ -451,13 +451,11 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Username</FormLabel>
                             <FormControl>
-                              <Input 
+                              <BasicInput 
                                 placeholder="Choose a username" 
-                                onChange={field.onChange}
-                                onBlur={field.onBlur}
                                 value={field.value}
+                                onChange={(value) => field.onChange({ target: { value } } as any)}
                                 name={field.name}
-                                ref={field.ref}
                               />
                             </FormControl>
                             <FormMessage />
@@ -471,14 +469,12 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Email</FormLabel>
                             <FormControl>
-                              <Input 
+                              <BasicInput 
                                 type="text" 
                                 placeholder="Enter your email" 
-                                onChange={field.onChange}
-                                onBlur={field.onBlur}
                                 value={field.value}
+                                onChange={(value) => field.onChange({ target: { value } } as any)}
                                 name={field.name}
-                                ref={field.ref}
                               />
                             </FormControl>
                             <FormMessage />
@@ -492,14 +488,12 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
-                              <Input 
+                              <BasicInput 
                                 type="password" 
                                 placeholder="Create a password" 
-                                onChange={field.onChange}
-                                onBlur={field.onBlur}
                                 value={field.value}
+                                onChange={(value) => field.onChange({ target: { value } } as any)}
                                 name={field.name}
-                                ref={field.ref}
                               />
                             </FormControl>
                             <FormMessage />
@@ -513,13 +507,11 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Display Name (Optional)</FormLabel>
                             <FormControl>
-                              <Input 
+                              <BasicInput 
                                 placeholder="How you want to be addressed" 
-                                onChange={field.onChange}
-                                onBlur={field.onBlur}
                                 value={field.value}
+                                onChange={(value) => field.onChange({ target: { value } } as any)}
                                 name={field.name}
-                                ref={field.ref}
                               />
                             </FormControl>
                             <FormMessage />
