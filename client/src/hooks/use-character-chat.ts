@@ -11,7 +11,7 @@ interface ChatMessage {
 
 interface UseCharacterChatOptions {
   characterId: string | number;
-  onCharacterUpdate?: (character: Character) => void;
+  onCharacterUpdate?: (field: string, value: any) => void;
 }
 
 export function useCharacterChat({ characterId, onCharacterUpdate }: UseCharacterChatOptions) {
@@ -65,7 +65,17 @@ export function useCharacterChat({ characterId, onCharacterUpdate }: UseCharacte
             }
           ]);
         } else if (data.type === 'character-updated' && onCharacterUpdate) {
-          onCharacterUpdate(data.character);
+          // Handle individual field updates from the updated character
+          const updatedChar = data.character;
+          if (updatedChar) {
+            // Update each changed field individually
+            Object.entries(updatedChar).forEach(([field, value]) => {
+              if (field !== 'id' && value !== undefined) {
+                onCharacterUpdate(field, value);
+              }
+            });
+          }
+          
           toast({
             title: "Character Updated",
             description: "Character details have been updated from conversation"

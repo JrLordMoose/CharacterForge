@@ -30,6 +30,7 @@ export default function CharacterEditor() {
   const [simulateDialogOpen, setSimulateDialogOpen] = useState(false);
   const [simulationScenario, setSimulationScenario] = useState('');
   const [simulationResult, setSimulationResult] = useState('');
+  const [chatDialogOpen, setChatDialogOpen] = useState(false);
   
   useEffect(() => {
     if (!isNew) {
@@ -119,11 +120,21 @@ export default function CharacterEditor() {
           });
         }
         break;
+      case '/chat':
+        if (!isNew) {
+          setChatDialogOpen(true);
+        } else {
+          toast({
+            title: "Cannot chat yet",
+            description: "Please save the character first before chatting"
+          });
+        }
+        break;
       case '/help':
       case 'help':
         toast({
           title: "Available Commands",
-          description: "/save - Save current character\n/back - Return to home\n/generate [text] - Generate description\n/simulate [scenario] - Simulate character response"
+          description: "/save - Save current character\n/back - Return to home\n/generate [text] - Generate description\n/simulate [scenario] - Simulate character response\n/chat - Open character chat dialog"
         });
         break;
       default:
@@ -185,6 +196,16 @@ export default function CharacterEditor() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Character Chat Dialog */}
+      {!isNew && (
+        <CharacterChatDialog
+          open={chatDialogOpen}
+          onOpenChange={setChatDialogOpen}
+          character={character as Character}
+          onCharacterUpdate={handleUpdate}
+        />
+      )}
     </div>
   );
 }

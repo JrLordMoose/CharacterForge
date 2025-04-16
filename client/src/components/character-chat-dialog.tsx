@@ -11,7 +11,7 @@ interface CharacterChatDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   character: Character;
-  onCharacterUpdate: (character: Partial<Character>) => void;
+  onCharacterUpdate: (field: string, value: any) => void;
 }
 
 interface Suggestion {
@@ -142,7 +142,12 @@ export function CharacterChatDialog({
     }
     
     // Update character locally and via WebSocket
-    onCharacterUpdate(update);
+    if (activeSuggestion.id === 1 && update.backstory) {
+      onCharacterUpdate('backstory', update.backstory);
+    } else if (activeSuggestion.id === 2 && update.motivations) {
+      onCharacterUpdate('motivations', update.motivations);
+    }
+    
     updateCharacterFromChat(update);
     
     // Close suggestion

@@ -14,13 +14,15 @@ interface CharacterWorkspaceProps {
   isNew?: boolean;
   onUpdate: (field: string, value: any) => void;
   onSave: () => void;
+  onChatOpen?: () => void;
 }
 
 export function CharacterWorkspace({ 
   character, 
   isNew = false,
   onUpdate,
-  onSave
+  onSave,
+  onChatOpen
 }: CharacterWorkspaceProps) {
   const { toast } = useToast();
   const [imageGenerating, setImageGenerating] = useState(false);
