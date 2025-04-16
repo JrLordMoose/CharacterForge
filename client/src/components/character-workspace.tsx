@@ -5,9 +5,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { ProgressDashboard } from './progress-dashboard';
 import { CharacterTabs } from './character-tabs';
 import { Character, CharacterTrait, CharacterRelationship } from '@shared/schema';
-import { generateCharacterImage } from '@/lib/openai';
+import { 
+  generateCharacterImage, 
+  generateCharacterTraits, 
+  enhanceCharacterBackstory,
+  generateCharacterVoice,
+  generateCharacterRelationships,
+  generateCharacterArc,
+  simulateCharacterResponse
+} from '@/lib/openai';
 import { useToast } from '@/hooks/use-toast';
-import { Wand2, MessageSquare, Sparkles } from 'lucide-react';
+import { Wand2, MessageSquare, Sparkles, UserIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { BasicInput } from '@/components/ui/basic-input';
 
 interface CharacterWorkspaceProps {
@@ -61,18 +70,144 @@ export function CharacterWorkspace({
     }
   };
   
-  const handleSimulate = () => {
-    toast({
-      title: "Character Simulation",
-      description: "Simulation feature is being prepared..."
-    });
+  const [simulateDialogOpen, setSimulateDialogOpen] = useState(false);
+  const [simulationScenario, setSimulationScenario] = useState('');
+  const [simulationResult, setSimulationResult] = useState('');
+  const [simulatingResponse, setSimulatingResponse] = useState(false);
+  
+  const handleSimulate = async (scenario?: string) => {
+    if (!character.name) {
+      toast({
+        title: "Character name required",
+        description: "Please provide a character name first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setSimulatingResponse(true);
+      const scenarioToUse = scenario || simulationScenario || "meeting a stranger at a coffee shop";
+      setSimulationScenario(scenarioToUse);
+      
+      toast({
+        title: "Simulating character response",
+        description: `Generating ${character.name}'s response to the scenario...`
+      });
+      
+      const response = await simulateCharacterResponse(character, scenarioToUse);
+      setSimulationResult(response);
+      setSimulateDialogOpen(true);
+    } catch (error) {
+      toast({
+        title: "Simulation failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setSimulatingResponse(false);
+    }
   };
   
-  const handleEnhanceWithAI = (section: string) => {
-    toast({
-      title: `Enhancing ${section}`,
-      description: "AI enhancement is being processed..."
-    });
+  const [generatingDetails, setGeneratingDetails] = useState(false);
+  
+  const handleEnhanceWithAI = async (section: string) => {
+    if (!character.name) {
+      toast({
+        title: "Character name required",
+        description: "Please provide a character name first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      toast({
+        title: `Enhancing ${section}`,
+        description: "AI enhancement is being processed..."
+      });
+      
+      switch(section) {
+        case 'psychology':
+          const traits = await generateCharacterTraits(character);
+          onUpdate('traits', traits);
+          break;
+        case 'backstory':
+          const enhancedBackstory = await enhanceCharacterBackstory(character.backstory || '');
+          onUpdate('backstory', enhancedBackstory);
+          break;
+        case 'voice':
+          const voice = await generateCharacterVoice(character);
+          onUpdate('voice', voice);
+          break;
+        case 'relationships':
+          const relationships = await generateCharacterRelationships(character);
+          onUpdate('relationships', relationships);
+          break;
+        case 'arc':
+          const arc = await generateCharacterArc(character);
+          onUpdate('arc', arc);
+          break;
+      }
+      
+      toast({
+        title: `${section} enhanced`,
+        description: `Your character's ${section} has been enhanced with AI`
+      });
+    } catch (error) {
+      toast({
+        title: "Enhancement failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const handleGenerateFullCharacter = async () => {
+    if (!character.name) {
+      toast({
+        title: "Character name required",
+        description: "Please provide a character name first before generating details",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setGeneratingDetails(true);
+      
+      // Starting with appearance and role
+      if (!character.appearance) {
+        onUpdate('appearance', `${character.name} is a striking individual with a commanding presence. They have distinctive features that reflect their background and personality.`);
+      }
+      
+      if (!character.role) {
+        onUpdate('role', 'Protagonist');
+      }
+      
+      // Generate each section in sequence
+      await handleEnhanceWithAI('psychology');
+      await handleEnhanceWithAI('backstory');
+      await handleEnhanceWithAI('relationships');
+      await handleEnhanceWithAI('arc');
+      await handleEnhanceWithAI('voice');
+      
+      // Update progress
+      onUpdate('progress', 60);
+      
+      toast({
+        title: "Character details generated",
+        description: "Your character has been fleshed out with AI. Feel free to edit any details."
+      });
+    } catch (error) {
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingDetails(false);
+    }
   };
   
   const handleOutlineEvents = () => {
@@ -130,20 +265,20 @@ export function CharacterWorkspace({
           <div className="space-y-6 col-span-1">
             <div>
               <label className="block text-muted-foreground mb-2">Name:</label>
-              <Input
+              <BasicInput
                 type="text"
                 value={character.name || ''}
-                onChange={(e) => onUpdate('name', e.target.value)}
+                onChange={(value) => onUpdate('name', value)}
                 className="w-full bg-secondary border-border rounded-md px-4 py-2 focus:border-primary focus:outline-none"
               />
             </div>
             
             <div>
               <label className="block text-muted-foreground mb-2">Role:</label>
-              <Input
+              <BasicInput
                 type="text"
                 value={character.role || ''}
-                onChange={(e) => onUpdate('role', e.target.value)}
+                onChange={(value) => onUpdate('role', value)}
                 className="w-full bg-secondary border-border rounded-md px-4 py-2 focus:border-primary focus:outline-none"
               />
             </div>
@@ -164,12 +299,21 @@ export function CharacterWorkspace({
                 <p className="text-muted-foreground">Tip: Use /simulate to test reactions</p>
               </div>
             </div>
+            
+            <Button
+              disabled={generatingDetails}
+              onClick={handleGenerateFullCharacter}
+              className="w-full bg-amber-900/40 border border-amber-600/50 text-amber-400 hover:bg-amber-900/60 hover:text-amber-300 transition flex items-center justify-center space-x-2 py-3"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              <span>{generatingDetails ? 'Generating...' : 'Auto-Generate Character Details'}</span>
+            </Button>
           </div>
           
           <ProgressDashboard 
             characterId={character.id?.toString()}
             progress={character.progress || 0}
-            description={character.description}
+            description={character.description || ""}
             onOutlineClick={handleOutlineEvents}
           />
         </div>
@@ -177,12 +321,12 @@ export function CharacterWorkspace({
         <CharacterTabs
           characterId={character.id?.toString()}
           traits={character.traits as CharacterTrait[] || []}
-          motivations={character.motivations}
-          conflicts={character.conflicts}
-          backstory={character.backstory}
+          motivations={character.motivations || ""}
+          conflicts={character.conflicts || ""}
+          backstory={character.backstory || ""}
           relationships={character.relationships as CharacterRelationship[] || []}
-          arc={character.arc}
-          voice={character.voice}
+          arc={character.arc || ""}
+          voice={character.voice || ""}
           onUpdate={onUpdate}
           onSimulate={handleSimulate}
           onEnhance={handleEnhanceWithAI}
