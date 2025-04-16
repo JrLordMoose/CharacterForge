@@ -7,7 +7,7 @@ import { CharacterTabs } from './character-tabs';
 import { Character, CharacterTrait, CharacterRelationship } from '@shared/schema';
 import { generateCharacterImage } from '@/lib/openai';
 import { useToast } from '@/hooks/use-toast';
-import { Wand2 } from 'lucide-react';
+import { Wand2, MessageSquare } from 'lucide-react';
 
 interface CharacterWorkspaceProps {
   character: Partial<Character>;
@@ -187,13 +187,26 @@ export function CharacterWorkspace({
           onEnhance={handleEnhanceWithAI}
         />
         
-        <div className="mt-8 flex justify-end">
-          <Button 
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={onSave}
-          >
-            {isNew ? 'Create Character' : 'Save Changes'}
-          </Button>
+        <div className="mt-8 flex justify-between items-center">
+          {!isNew && onChatOpen && (
+            <Button 
+              variant="outline" 
+              className="bg-black/20 border-amber-600/50 text-amber-400 hover:bg-amber-900/30 hover:text-amber-300"
+              onClick={onChatOpen}
+            >
+              <span className="mr-2">Chat with {character.name}</span>
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+          )}
+          
+          <div className="flex gap-4">
+            <Button 
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={onSave}
+            >
+              {isNew ? 'Create Character' : 'Save Changes'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

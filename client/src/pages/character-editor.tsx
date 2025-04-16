@@ -156,6 +156,7 @@ export default function CharacterEditor() {
           isNew={isNew}
           onUpdate={handleUpdate}
           onSave={handleSave}
+          onChatOpen={() => setChatDialogOpen(true)}
         />
         
         <CommandInterface onCommand={processCommand} />
