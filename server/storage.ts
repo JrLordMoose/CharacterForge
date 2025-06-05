@@ -1,6 +1,6 @@
 import { characters, type Character, type InsertCharacter, type UpdateCharacter, users, type User, type InsertUser } from "@shared/schema";
 import { db } from './db';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 import * as crypto from 'crypto';
 import { hashPassword } from './auth';
 
@@ -287,8 +287,12 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.resetToken, token))
-      .where(sql`${users.resetTokenExpiry} > ${now}`);
+      .where(
+        and(
+          eq(users.resetToken, token),
+          sql`${users.resetTokenExpiry} > ${now}`
+        )
+      );
     
     return user || undefined;
   }

@@ -27,7 +27,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 }
 
 export async function sendPasswordResetEmail(
-  email: string, 
+  email: string,
   resetToken: string,
   resetUrl: string
 ): Promise<boolean> {
