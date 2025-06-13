@@ -154,4 +154,5 @@ export function setupAuth(app: Express): void {
     }
     res.status(401).json({ error: "Not authenticated" });
   });
+
 }
